@@ -189,47 +189,37 @@ function thumbUrl(l) {
   return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : "";
 }
 async function loadLevels() {
-  const base = new URL("Levels/", location.href);
-  let files = [];
-  try {
-    const r = await fetch(base);
-    if (r.ok) {
-      const doc = new DOMParser().parseFromString(await r.text(), "text/html");
-      doc.querySelectorAll("a[href]").forEach(a => {
-        const href = a.getAttribute("href");
-        if (/\.json$/i.test(href.split("?")[0]) && !/index\.json$/i.test(href)) {
-          files.push(new URL(href, base).href);
-        }
-      });
-    }
-  } catch (e) {}
-  if (!files.length && location.hostname.endsWith(".github.io")) {
+// ADD OTHER LEVELSD PLAESESAESEASASEASE
+  const levelFiles = [
+    "Acu.json",
+    "Cataclysm.json",
+    "Denouement.Json",
+    "FallingUp.json",
+    "MaybePossiblyThing.json",
+    "Pyromaniac.json",
+    "Stalemate.json",
+    "Supersonic.json",
+    "TrollLevel.json",
+    "WindyLandscape.json"
+  ];
 
+  const base = new URL("./Levels/", document.baseURI);
+  const loaded = await Promise.all(levelFiles.map(async filename => {
+    const fileUrl = new URL(encodeURIComponent(filename), base);
     try {
-      const owner = location.hostname.split(".")[0];
-      const repo = location.pathname.split("/").filter(Boolean)[0];
-      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/Levels`);
-      if (r.ok) {
-        files = (await r.json())
-          .filter(f => /\.json$/i.test(f.name) && !/^index\.json$/i.test(f.name))
-          .map(f => new URL(encodeURIComponent(f.name), base).href);
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} while loading ${filename}`);
       }
-    } catch (e) {}
-  }
-  if (!files.length) {
-
-    try {
-      const r = await fetch(new URL("index.json", base));
-      if (r.ok) files = (await r.json()).map(f => new URL(f, base).href);
-    } catch (e) {}
-  }
-  const out = [];
-  await Promise.all(files.map(async f => {
-    try {
-      const data = await (await fetch(f)).json();
-      for (const [raw, l] of Object.entries(data)) out.push({ key: raw, ...l });
-    } catch (e) {}
+      const data = await response.json();
+      return Object.entries(data).map(([raw, level]) => ({ key: raw, ...level }));
+    } catch (error) {
+      console.error(`Could not load Levels/${filename}:`, error);
+      return [];
+    }
   }));
+
+  const out = loaded.flat();
   out.sort((a, b) => (a.ListPlacement ?? 1e9) - (b.ListPlacement ?? 1e9));
   levels = out;
 }
