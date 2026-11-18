@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demonlist</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap">
+<style>
+  :root {
+    --bg: #f5f5f5;
+    --panel: #ffffff;
+    --panel-border: #dcdcdc;
+    --text: #444444;
+    --heading: #2b2b2b;
+    --muted: #7a7a7a;
+    --link: #0d6efd;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1c1c;
+    --panel: #262626;
+    --panel-border: #3a3a3a;
+    --text: #cfcfcf;
+    --heading: #f2f2f2;
+    --muted: #8f8f8f;
+    --link: #6ea8fe;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Montserrat", "Segoe UI", Arial, sans-serif;
+    min-height: 100vh;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  /* side bars: Foreground.png stretched to the window */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background: url("Foreground.png") center / 100% 100% no-repeat;
+    pointer-events: none;
+    z-index: 0;
+  }
+  main { position: relative; z-index: 1; }
+
+  .controls {
+    position: fixed; top: 12px; right: 12px;
+    display: flex; gap: 8px; z-index: 5;
+  }
+  .controls button, .controls select {
+    font: 600 13px "Montserrat", sans-serif;
+    color: var(--heading);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    padding: 7px 12px;
+    cursor: pointer;
+  }
+  .controls button:focus-visible, .controls select:focus-visible,
+  .name:focus-visible, .thumb:focus-visible, .back:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 64px 16px 48px; }
+
+  /* list */
+  .entry {
+    display: flex;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    margin-bottom: 14px;
+    min-height: 130px;
+  }
+  .entry .thumb { flex: 0 0 auto; width: 232px; position: relative; display: block; background: #000; }
+  .entry .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .entry .thumb:hover img { opacity: .85; }
+  .entry .info {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    padding: 12px 20px; text-align: center; min-width: 0;
+  }
+  .entry .rank { font-weight: 800; font-size: 1.9rem; color: var(--heading); line-height: 1.1; }
+  .entry .name { font-weight: 700; font-size: 1.25rem; color: var(--heading); margin-top: 4px; overflow-wrap: anywhere; }
+  .entry .name:hover { text-decoration: underline; }
+  .entry .by { font-size: .9rem; color: var(--muted); margin-top: 4px; font-weight: 600; }
+
+  .empty { font-size: 6rem; text-align: center; color: var(--muted); margin-top: 22vh; user-select: none; cursor: default; }
+
+  /* level page */
+  .level {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    padding: 24px 24px 30px;
+    text-align: center;
+    position: relative;
+  }
+  .back {
+    position: absolute; left: 16px; top: 18px;
+    font-weight: 800; font-size: 1.4rem; color: var(--heading);
+  }
+  .level h1 { margin: 0 0 12px; font-size: 2.1rem; font-weight: 700; color: var(--heading); overflow-wrap: anywhere; padding: 0 36px; }
+  .level .credit { font-weight: 700; font-size: .95rem; color: var(--heading); padding-bottom: 8px; border-bottom: 1px solid var(--panel-border); }
+  .level .desc { font-size: .95rem; padding: 6px 0 16px; border-bottom: 1px solid var(--panel-border); }
+  .video { position: relative; width: 100%; max-width: 620px; aspect-ratio: 16/9; margin: 20px auto; background: #000; }
+  .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  .stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 30px; margin-top: 6px; }
+  .stat { min-width: 110px; }
+  .stat b { display: block; font-weight: 700; color: var(--heading); font-size: .95rem; }
+  .stat span { font-size: .95rem; }
+  .song { margin-top: 18px; }
+  .song b { color: var(--heading); font-size: .95rem; }
+  .song a { color: var(--link); }
+  .song a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .entry { flex-direction: column; }
+    .entry .thumb { width: 100%; aspect-ratio: 16/9; }
+    .level h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <select id="lang" aria-label="Language">
+    <option value="en">English</option>
+    <option value="fr">Français</option>
+  </select>
+  <button id="theme" type="button" aria-label="Toggle night mode">🌙</button>
+</div>
+
+<main id="app"></main>
+
+<script>
+const T = {
+  en: { by: "by", id: "Level ID", length: "Level Length", objects: "Object Count", diff: "In-Game Difficulty",
+        created: "Created On", song: "Newgrounds Song",
+        d: { extreme: "Extreme", insane: "Insane", hard: "Hard", medium: "Medium", easy: "Easy" } },
+  fr: { by: "par", id: "ID du niveau", length: "Durée du niveau", objects: "Nombre d'objets", diff: "Difficulté en jeu",
+        created: "Créé le", song: "Musique Newgrounds",
+        d: { extreme: "Extrême", insane: "Insane", hard: "Difficile", medium: "Moyen", easy: "Facile" } }
+};
+
+let lang = "en";
+try { lang = localStorage.getItem("lang") || "en"; } catch (e) {}
+let levels = [];
+
+const app = document.getElementById("app");
+const langSel = document.getElementById("lang");
+const themeBtn = document.getElementById("theme");
+
+/* ---------- theme (light by default) ---------- */
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  try { localStorage.setItem("theme", t); } catch (e) {}
+}
+let savedTheme = "light";
+try { savedTheme = localStorage.getItem("theme") || "light"; } catch (e) {}
+setTheme(savedTheme);
+themeBtn.onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+
+langSel.value = lang;
+document.documentElement.lang = lang;
+langSel.onchange = () => {
+  lang = langSel.value;
+  document.documentElement.lang = lang;
+  try { localStorage.setItem("lang", lang); } catch (e) {}
+  render();
+};
+
+/* ---------- helpers ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function ytId(url) {
+  if (!url) return null;
+  const m = String(url).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\/|watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([\w-]{11})/);
+  return m ? m[1] : null;
+}
+function fmtLength(s) {
+  s = Number(s) || 0;
+  return Math.floor(s / 60) + "m" + String(s % 60).padStart(2, "0") + "s";
+}
+function fmtDate(v) {
+  const s = String(v ?? "").padStart(8, "0");
+  if (!/^\d{8}$/.test(s)) return esc(v);
+  const d = new Date(+s.slice(4), +s.slice(2, 4) - 1, +s.slice(0, 2));
+  return d.toLocaleDateString(lang === "fr" ? "fr-FR" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+function diffLabel(d) {
+  const key = String(d || "").toLowerCase().replace(/\s*demon$/, "").trim();
+  const name = T[lang].d[key] || d;
+  return lang === "fr" ? `Demon ${name}` : `${name} Demon`;
+}
+function thumbUrl(l) {
+  const id = ytId(l.Video);
+  return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : "";
+}
+
+/* ---------- loading from /Levels ---------- */
+async function loadLevels() {
+  const base = new URL("Levels/", location.href);
+  let files = [];
+  try {
+    const r = await fetch(base);
+    if (r.ok) {
+      const doc = new DOMParser().parseFromString(await r.text(), "text/html");
+      doc.querySelectorAll("a[href]").forEach(a => {
+        const href = a.getAttribute("href");
+        if (/\.json$/i.test(href.split("?")[0]) && !/index\.json$/i.test(href)) {
+          files.push(new URL(href, base).href);
+        }
+      });
+    }
+  } catch (e) {}
+  if (!files.length) {
+    // fallback: Levels/index.json containing ["a.json", "b.json"]
+    try {
+      const r = await fetch(new URL("index.json", base));
+      if (r.ok) files = (await r.json()).map(f => new URL(f, base).href);
+    } catch (e) {}
+  }
+  const out = [];
+  await Promise.all(files.map(async f => {
+    try {
+      const data = await (await fetch(f)).json();
+      for (const [raw, l] of Object.entries(data)) out.push({ key: raw, ...l });
+    } catch (e) {}
+  }));
+  out.sort((a, b) => (a.ListPlacement ?? 1e9) - (b.ListPlacement ?? 1e9));
+  levels = out;
+}
+
+/* ---------- views ---------- */
+function renderList() {
+  if (!levels.length) {
+    app.innerHTML = `<div class="empty">☹</div>`;
+    return;
+  }
+  app.innerHTML = levels.map(l => {
+    const t = thumbUrl(l);
+    const thumb = l.Video
+      ? `<a class="thumb" href="${esc(l.Video)}" target="_blank" rel="noopener">${t ? `<img src="${t}" alt="" loading="lazy">` : ""}</a>`
+      : `<div class="thumb"></div>`;
+    return `<div class="entry">
+      ${thumb}
+      <div class="info">
+        <div class="rank">#${esc(l.ListPlacement)}</div>
+        <a class="name" href="#${encodeURIComponent(l.key)}">${esc(l.DisplayName || l.key)}</a>
+        <div class="by">${T[lang].by} ${esc(l.CreatorName)}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderLevel(key) {
+  const l = levels.find(x => x.key === key);
+  if (!l) { renderList(); return; }
+  const t = T[lang], id = ytId(l.Video);
+  const video = id
+    ? `<div class="video"><iframe src="https://www.youtube.com/embed/${id}" allowfullscreen loading="lazy" title="${esc(l.DisplayName)}"></iframe></div>`
+    : "";
+  const stat = (label, val) => val === undefined || val === null || val === "" ? "" :
+    `<div class="stat"><b>${label}</b><span>${val}</span></div>`;
+  app.innerHTML = `<div class="level">
+    <a class="back" href="#" aria-label="Back">←</a>
+    <h1>${esc(l.DisplayName || l.key)}</h1>
+    <div class="credit">${t.by} ${esc(l.CreatorName)}</div>
+    ${l.Description ? `<div class="desc">“${esc(l.Description)}”</div>` : ""}
+    ${video}
+    <div class="stats">
+      ${stat(t.id, esc(l.LevelId))}
+      ${stat(t.length, fmtLength(l.Length))}
+      ${stat(t.objects, esc(l.Objects))}
+      ${stat(t.diff, esc(diffLabel(l.DemonDifficulty)))}
+      ${stat(t.created, fmtDate(l.CreatedDate))}
+    </div>
+    ${l.NgSong ? `<div class="song"><b>${t.song}</b><br>
+      <a href="https://www.newgrounds.com/audio/listen/${esc(l.NgSong)}" target="_blank" rel="noopener">ID ${esc(l.NgSong)}</a></div>` : ""}
+  </div>`;
+}
+
+function render() {
+  const key = decodeURIComponent(location.hash.slice(1));
+  key ? renderLevel(key) : renderList();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", render);
+
+loadLevels().then(render);
+</script>
+</body>
+</html>
